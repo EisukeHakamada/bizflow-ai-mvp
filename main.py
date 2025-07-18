@@ -1,13 +1,11 @@
 """
-BizFlow AI MVP - AI機能付きバージョン
+BizFlow AI MVP - AI機能付き完全版
 実際のGemini APIを使用した返信生成機能
 """
 
 import streamlit as st
 import sys
 import os
-import google.generativeai as genai
-from config.config import AI_MODELS
 
 # プロジェクトのルートディレクトリをPythonパスに追加
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +22,7 @@ st.set_page_config(
 def setup_ai():
     """AI APIの設定"""
     try:
+        import google.generativeai as genai
         api_key = st.secrets.get("GEMINI_API_KEY", "")
         if api_key and api_key != "test-gemini-api-key-12345":
             genai.configure(api_key=api_key)
@@ -37,6 +36,7 @@ def setup_ai():
 def generate_ai_reply(message_info, tone="丁寧・フォーマル"):
     """AI返信生成"""
     try:
+        import google.generativeai as genai
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         tone_instructions = {
@@ -422,4 +422,4 @@ def main():
         show_projects()
 
 if __name__ == "__main__":
-    main()git add main.py
+    main()
