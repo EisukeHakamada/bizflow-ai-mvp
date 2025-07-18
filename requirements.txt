@@ -1,11 +1,11 @@
-# BizFlow AI MVP 必要なライブラリ（修正版）
+# BizFlow AI MVP 必要なライブラリ（最終修正版）
 streamlit>=1.28.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 pandas>=2.0.0
 python-dateutil>=2.8.0
 
-# AI機能（基本のみ）
+# AI機能
 google-generativeai>=0.3.0
 
 # Firebase（オプション）
