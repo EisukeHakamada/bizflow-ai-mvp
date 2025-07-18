@@ -1,6 +1,6 @@
 """
-BizFlow AI MVP - 超リアルAsana風タスク管理システム
-ドラッグ風ステータス変更・モーダル詳細表示・完全インタラクティブUI
+BizFlow AI MVP - 完全修正版Asana風タスク管理システム
+HTMLレンダリング修正・レイアウト修正・ドラッグ風インタラクション実装
 """
 
 import streamlit as st
@@ -21,44 +21,44 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 超リアルAsana風CSS
+# 完全修正版CSS
 st.markdown("""
 <style>
     /* グローバルスタイル */
     .main .block-container {
-        padding-top: 2rem;
+        padding-top: 1rem;
         max-width: 1400px;
     }
     
-    /* カンバンボードコンテナ */
-    .kanban-container {
-        display: flex;
+    /* カンバンボード全体のコンテナ */
+    .kanban-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
         gap: 20px;
         padding: 20px 0;
         min-height: 600px;
     }
     
-    /* カンバン列スタイル */
+    /* カンバン列 */
     .kanban-column {
-        flex: 1;
         background: #fafbfc;
         border-radius: 12px;
         padding: 16px;
         border: 1px solid #dfe1e6;
-        position: relative;
         min-height: 500px;
+        position: relative;
     }
     
-    .kanban-header {
+    .column-header {
         font-weight: 600;
-        font-size: 16px;
+        font-size: 14px;
         color: #172b4d;
         margin-bottom: 16px;
         padding-bottom: 12px;
         border-bottom: 2px solid #e4e6ea;
         display: flex;
-        align-items: center;
         justify-content: space-between;
+        align-items: center;
     }
     
     .task-count {
@@ -70,11 +70,11 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* タスクカードスタイル */
+    /* タスクカード */
     .task-card {
         background: white;
         border-radius: 8px;
-        padding: 16px;
+        padding: 12px;
         margin-bottom: 12px;
         border: 1px solid #dfe1e6;
         box-shadow: 0 1px 2px rgba(0,0,0,0.1);
@@ -90,36 +90,48 @@ st.markdown("""
         border-color: #0052cc;
     }
     
-    .task-card:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-    
-    .task-card-inner {
-        position: relative;
-        z-index: 2;
+    .task-card.dragging {
+        opacity: 0.7;
+        transform: rotate(5deg);
     }
     
     /* 優先度インジケーター */
-    .priority-indicator {
+    .priority-high::before {
+        content: '';
         position: absolute;
         top: 0;
         left: 0;
         width: 4px;
         height: 100%;
+        background: #de350b;
         border-radius: 8px 0 0 8px;
     }
     
-    .priority-high { background: #de350b; }
-    .priority-medium { background: #ff8b00; }
-    .priority-low { background: #00875a; }
+    .priority-medium::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #ff8b00;
+        border-radius: 8px 0 0 8px;
+    }
     
-    /* タスクヘッダー */
-    .task-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 8px;
+    .priority-low::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: #00875a;
+        border-radius: 8px 0 0 8px;
+    }
+    
+    /* タスク内容 */
+    .task-content {
+        margin-left: 8px;
     }
     
     .task-title {
@@ -127,56 +139,13 @@ st.markdown("""
         font-size: 14px;
         color: #172b4d;
         line-height: 1.4;
-        margin: 0;
-        flex: 1;
-        padding-right: 8px;
+        margin-bottom: 8px;
     }
     
-    .task-actions {
-        display: flex;
-        gap: 4px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-    
-    .task-card:hover .task-actions {
-        opacity: 1;
-    }
-    
-    .action-btn {
-        width: 24px;
-        height: 24px;
-        border-radius: 4px;
-        border: none;
-        background: #f4f5f7;
-        color: #5e6c84;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        transition: all 0.2s ease;
-    }
-    
-    .action-btn:hover {
-        background: #e4e6ea;
-        color: #172b4d;
-    }
-    
-    /* タスクメタ情報 */
     .task-meta {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 12px;
-        font-size: 12px;
-        color: #5e6c84;
-    }
-    
-    .task-tags {
-        display: flex;
-        gap: 4px;
         flex-wrap: wrap;
+        gap: 4px;
         margin-bottom: 8px;
     }
     
@@ -198,23 +167,39 @@ st.markdown("""
         color: #006644;
     }
     
-    .tag-category {
-        background: #deebff;
-        color: #0052cc;
+    .tag-priority-high {
+        background: #ffebe6;
+        color: #de350b;
     }
     
-    /* サブタスク進捗 */
+    .tag-priority-medium {
+        background: #fff4e6;
+        color: #ff8b00;
+    }
+    
+    .tag-priority-low {
+        background: #e3fcef;
+        color: #00875a;
+    }
+    
+    .task-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #5e6c84;
+        margin-top: 8px;
+    }
+    
     .subtask-progress {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: #5e6c84;
+        gap: 4px;
     }
     
     .progress-bar {
-        width: 60px;
-        height: 4px;
+        width: 40px;
+        height: 3px;
         background: #dfe1e6;
         border-radius: 2px;
         overflow: hidden;
@@ -226,8 +211,37 @@ st.markdown("""
         transition: width 0.3s ease;
     }
     
+    /* ドラッグ風移動ボタン */
+    .move-buttons {
+        display: flex;
+        gap: 4px;
+        margin-top: 8px;
+    }
+    
+    .move-btn {
+        padding: 4px 8px;
+        border: 1px solid #dfe1e6;
+        background: white;
+        border-radius: 4px;
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #5e6c84;
+    }
+    
+    .move-btn:hover {
+        background: #0052cc;
+        color: white;
+        border-color: #0052cc;
+    }
+    
+    .move-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
     /* モーダルスタイル */
-    .modal-overlay {
+    .modal-backdrop {
         position: fixed;
         top: 0;
         left: 0;
@@ -238,89 +252,44 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: fadeIn 0.3s ease;
     }
     
     .modal-content {
         background: white;
         border-radius: 12px;
         box-shadow: 0 12px 24px rgba(0,0,0,0.3);
-        max-width: 800px;
+        max-width: 700px;
         width: 90%;
         max-height: 90vh;
         overflow-y: auto;
-        animation: slideIn 0.3s ease;
+        position: relative;
     }
     
     .modal-header {
-        padding: 24px 24px 0 24px;
+        padding: 20px 20px 0 20px;
         border-bottom: 1px solid #dfe1e6;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
     }
     
     .modal-body {
-        padding: 0 24px 24px 24px;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes slideIn {
-        from { transform: translateY(-50px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    /* ステータス移動ボタン */
-    .status-move-btn {
-        background: linear-gradient(135deg, #0052cc, #2684ff);
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 11px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        box-shadow: 0 1px 3px rgba(0,82,204,0.3);
-    }
-    
-    .status-move-btn:hover {
-        background: linear-gradient(135deg, #0065ff, #2684ff);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(0,82,204,0.4);
-    }
-    
-    /* 新規タスクボタン */
-    .add-task-btn {
-        width: 100%;
-        padding: 12px;
-        border: 2px dashed #dfe1e6;
-        background: transparent;
-        border-radius: 8px;
-        color: #5e6c84;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 8px;
-    }
-    
-    .add-task-btn:hover {
-        border-color: #0052cc;
-        color: #0052cc;
-        background: #f4f5f7;
+        padding: 0 20px 20px 20px;
     }
     
     /* レスポンシブ対応 */
-    @media (max-width: 768px) {
-        .kanban-container {
-            flex-direction: column;
-            gap: 16px;
+    @media (max-width: 1200px) {
+        .kanban-board {
+            grid-template-columns: repeat(2, 1fr);
         }
-        
-        .kanban-column {
-            min-height: auto;
+    }
+    
+    @media (max-width: 768px) {
+        .kanban-board {
+            grid-template-columns: 1fr;
+            gap: 16px;
         }
         
         .modal-content {
@@ -431,123 +400,6 @@ def generate_ai_task(message_info, summary_data=None):
 **完了条件:**
 適切な返信を送信し、相手からの確認を得る
         """
-
-def generate_ai_summary(message_info):
-    """AI要約・分類・タグ付け機能"""
-    try:
-        import google.generativeai as genai
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # より詳細なメッセージ内容を生成（実際の実装では実際のメッセージ内容を使用）
-        message_content = f"""
-        件名: {message_info['subject']}
-        送信者: {message_info['sender']}
-        推定内容: {message_info['subject']}に関する業務連絡。
-        具体的には、プロジェクトの進捗確認、資料の修正依頼、会議の日程調整、
-        または重要な業務判断に関する相談事項が含まれている可能性が高い。
-        """
-        
-        prompt = f"""
-あなたは優秀なビジネスアナリストです。以下のメッセージを分析して、要約・分類・タグ付けを行ってください。
-
-## 分析対象メッセージ
-{message_content}
-
-## 出力要件
-以下の形式で出力してください：
-
-**要約:**
-[メッセージの要点を1-2行で簡潔に要約]
-
-**分類:**
-[情報共有/依頼/確認/緊急/相談 のいずれか]
-
-**アクション:**
-[必要なアクション項目を1行で]
-
-**緊急度:**
-[高/中/低]
-
-**感情:**
-[ポジティブ/ニュートラル/ネガティブ]
-
-**推定処理時間:**
-[対応にかかる推定時間]
-
-**タグ:**
-[関連するタグを3つまで、カンマ区切り]
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
-        
-    except Exception as e:
-        return f"""
-**要約:**
-{message_info['subject']}に関する業務連絡
-
-**分類:**
-確認
-
-**アクション:**
-内容確認後、適切に対応
-
-**緊急度:**
-中
-
-**感情:**
-ニュートラル
-
-**推定処理時間:**
-5-10分
-
-**タグ:**
-業務連絡, 確認事項, プロジェクト
-        """
-
-def generate_ai_reply(message_info, tone="丁寧・フォーマル"):
-    """AI返信生成"""
-    try:
-        import google.generativeai as genai
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        tone_instructions = {
-            '丁寧・フォーマル': '敬語を使い、ビジネスマナーに配慮した丁寧な返信',
-            'カジュアル・親しみやすい': 'フレンドリーで親しみやすく、でもプロフェッショナルな返信',
-            '簡潔・ビジネスライク': '要点を簡潔にまとめた効率的な返信'
-        }
-        
-        prompt = f"""
-あなたは優秀なビジネスアシスタントです。以下のメッセージに対する返信を作成してください。
-
-## 受信メッセージ情報
-送信者: {message_info['sender']}
-件名: {message_info['subject']}
-内容の推測: {message_info['subject']}に関する業務依頼または確認事項
-
-## 返信の要件
-- トーン: {tone_instructions.get(tone, '丁寧・フォーマル')}
-- 3つの異なるバリエーションを作成
-- 各返信は100-200文字程度
-- 相手の依頼に適切に応答
-
-以下の形式で出力してください：
-
-**返信案1: 即座に対応版**
-[返信内容1]
-
-**返信案2: 詳細確認版**
-[返信内容2]
-
-**返信案3: 簡潔回答版**
-[返信内容3]
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
-        
-    except Exception as e:
-        return f"AI生成エラー: {str(e)}\n\n代替テンプレート返信を使用します。"
 
 def parse_ai_response(response_text):
     """AI応答をパース"""
@@ -785,25 +637,15 @@ def update_task_status(task_id, new_status):
             task['status'] = new_status
             break
 
-def get_next_status(current_status):
-    """次のステータスを取得"""
+def get_move_options(current_status):
+    """移動可能なステータスを取得"""
     status_flow = {
-        'To Do': '進行中',
-        '進行中': 'レビュー中', 
-        'レビュー中': '完了',
-        '完了': '完了'
+        'To Do': ['進行中'],
+        '進行中': ['To Do', 'レビュー中'],
+        'レビュー中': ['進行中', '完了'],
+        '完了': ['レビュー中']
     }
-    return status_flow.get(current_status, current_status)
-
-def get_prev_status(current_status):
-    """前のステータスを取得"""
-    status_flow = {
-        '進行中': 'To Do',
-        'レビュー中': '進行中',
-        '完了': 'レビュー中',
-        'To Do': 'To Do'
-    }
-    return status_flow.get(current_status, current_status)
+    return status_flow.get(current_status, [])
 
 def show_dashboard():
     """ダッシュボード表示"""
@@ -869,8 +711,87 @@ def show_dashboard():
                 st.session_state.selected_project_filter = project['name']
                 st.info(f"タスク管理ページで{project['name']}のタスクを表示します")
 
-def show_ultra_asana_kanban():
-    """超リアルAsana風カンバンボード"""
+def render_task_card(task):
+    """タスクカードをレンダリング"""
+    # サブタスク進捗計算
+    subtask_progress = 0
+    if task.get('subtasks'):
+        completed_subtasks = len([s for s in task['subtasks'] if s['completed']])
+        total_subtasks = len(task['subtasks'])
+        subtask_progress = (completed_subtasks / total_subtasks) * 100 if total_subtasks > 0 else 0
+        subtask_text = f"{completed_subtasks}/{total_subtasks}"
+    else:
+        subtask_text = "0/0"
+    
+    # 優先度クラス
+    priority_class = f"priority-{task['priority'].lower()}" if task['priority'] in ['高', '中', '低'] else "priority-medium"
+    
+    # タスクカードのコンテナ
+    card_container = st.container()
+    
+    with card_container:
+        # カスタムHTMLでタスクカード作成
+        st.markdown(f"""
+        <div class="task-card {priority_class}">
+            <div class="task-content">
+                <div class="task-title">{task['name']}</div>
+                <div class="task-meta">
+                    {'<span class="tag tag-ai">🤖 AI</span>' if task.get('created_from_message') else ''}
+                    <span class="tag tag-project">{task.get('project', '')}</span>
+                    <span class="tag tag-priority-{task['priority'].lower()}">{task['priority']}</span>
+                </div>
+                <div class="task-footer">
+                    <div class="subtask-progress">
+                        <span>📝 {subtask_text}</span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {subtask_progress}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <span>⏰ {task.get('due_date', '')}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # インタラクションボタン
+        col1, col2, col3 = st.columns([2, 2, 1])
+        
+        with col1:
+            if st.button("📖 詳細", key=f"detail_{task['id']}", help="タスク詳細をモーダルで表示"):
+                st.session_state.selected_task_id = task['id']
+                st.session_state.show_task_modal = True
+                st.rerun()
+        
+        with col2:
+            # ドラッグ風移動ボタン
+            move_options = get_move_options(task['status'])
+            if move_options:
+                selected_move = st.selectbox(
+                    "移動先",
+                    ["移動先選択"] + move_options,
+                    key=f"move_select_{task['id']}",
+                    label_visibility="collapsed"
+                )
+                
+                if selected_move != "移動先選択":
+                    update_task_status(task['id'], selected_move)
+                    st.success(f"「{task['name']}」を「{selected_move}」に移動しました！")
+                    st.rerun()
+        
+        with col3:
+            if st.button("🗑️", key=f"delete_{task['id']}", help="タスクを削除"):
+                if st.session_state.get(f"confirm_delete_{task['id']}", False):
+                    st.session_state.ai_tasks = [t for t in st.session_state.ai_tasks if t['id'] != task['id']]
+                    st.success("タスクを削除しました")
+                    st.rerun()
+                else:
+                    st.session_state[f"confirm_delete_{task['id']}"] = True
+                    st.warning("もう一度クリックすると削除されます")
+
+def show_fixed_kanban_board():
+    """修正版カンバンボード"""
     st.markdown("### 📋 カンバンボード")
     
     # ステータス列の定義
@@ -881,8 +802,8 @@ def show_ultra_asana_kanban():
         {'name': '完了', 'color': '#28a745'}
     ]
     
-    # カンバンコンテナの開始
-    st.markdown('<div class="kanban-container">', unsafe_allow_html=True)
+    # カンバンボードのHTMLコンテナ開始
+    st.markdown('<div class="kanban-board">', unsafe_allow_html=True)
     
     # 4列のカンバンボード
     cols = st.columns(4)
@@ -898,7 +819,7 @@ def show_ultra_asana_kanban():
             
             st.markdown(f"""
             <div class="kanban-column">
-                <div class="kanban-header" style="color: {color}">
+                <div class="column-header" style="color: {color}">
                     <span>{status}</span>
                     <span class="task-count">({task_count})</span>
                 </div>
@@ -906,7 +827,7 @@ def show_ultra_asana_kanban():
             
             # タスクカード表示
             for task in tasks_in_status:
-                show_ultra_task_card(task)
+                render_task_card(task)
             
             # 新規タスク追加（To Doカラムのみ）
             if status == 'To Do':
@@ -916,95 +837,6 @@ def show_ultra_asana_kanban():
             st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
-
-def show_ultra_task_card(task):
-    """超リアルAsanaタスクカード"""
-    # 優先度クラス
-    priority_class = f"priority-{task['priority'].lower()}" if task['priority'] in ['高', '中', '低'] else "priority-medium"
-    
-    # サブタスク進捗計算
-    subtask_progress = 0
-    if task.get('subtasks'):
-        completed_subtasks = len([s for s in task['subtasks'] if s['completed']])
-        total_subtasks = len(task['subtasks'])
-        subtask_progress = (completed_subtasks / total_subtasks) * 100 if total_subtasks > 0 else 0
-        subtask_text = f"{completed_subtasks}/{total_subtasks}"
-    else:
-        subtask_text = "0/0"
-    
-    # タスクカードHTML
-    card_id = f"task_card_{task['id']}"
-    
-    card_html = f"""
-    <div class="task-card" id="{card_id}">
-        <div class="priority-indicator {priority_class}"></div>
-        <div class="task-card-inner">
-            <div class="task-header">
-                <h4 class="task-title">{task['name']}</h4>
-                <div class="task-actions">
-                    <button class="action-btn" title="詳細">👁️</button>
-                </div>
-            </div>
-            
-            <div class="task-tags">
-                {('<span class="tag tag-ai">🤖 AI</span>' if task.get('created_from_message') else '')}
-                <span class="tag tag-project">{task.get('project', '')}</span>
-                <span class="tag tag-category">{task.get('priority', '')}</span>
-            </div>
-            
-            <div class="task-meta">
-                <div class="subtask-progress">
-                    <span>📝 {subtask_text}</span>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: {subtask_progress}%"></div>
-                    </div>
-                </div>
-                <div>
-                    <small>⏰ {task.get('due_date', '')} | 👤 {task.get('assignee', '')}</small>
-                </div>
-            </div>
-        </div>
-    </div>
-    """
-    
-    st.markdown(card_html, unsafe_allow_html=True)
-    
-    # インタラクションボタン
-    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
-    
-    with col1:
-        if st.button("📖 詳細表示", key=f"detail_{task['id']}", help="タスク詳細をモーダルで表示"):
-            st.session_state.selected_task_id = task['id']
-            st.session_state.show_task_modal = True
-            st.rerun()
-    
-    with col2:
-        # 前のステータスに移動
-        prev_status = get_prev_status(task['status'])
-        if prev_status != task['status']:
-            if st.button("◀️", key=f"prev_{task['id']}", help=f"{prev_status}に移動"):
-                update_task_status(task['id'], prev_status)
-                st.success(f"「{task['name']}」を「{prev_status}」に移動しました")
-                st.rerun()
-    
-    with col3:
-        # 次のステータスに移動
-        next_status = get_next_status(task['status'])
-        if next_status != task['status']:
-            if st.button("▶️", key=f"next_{task['id']}", help=f"{next_status}に移動"):
-                update_task_status(task['id'], next_status)
-                st.success(f"「{task['name']}」を「{next_status}」に移動しました")
-                st.rerun()
-    
-    with col4:
-        if st.button("🗑️", key=f"delete_{task['id']}", help="タスクを削除"):
-            if st.session_state.get(f"confirm_delete_{task['id']}", False):
-                st.session_state.ai_tasks = [t for t in st.session_state.ai_tasks if t['id'] != task['id']]
-                st.success("タスクを削除しました")
-                st.rerun()
-            else:
-                st.session_state[f"confirm_delete_{task['id']}"] = True
-                st.warning("もう一度クリックすると削除されます")
 
 def show_task_modal():
     """タスク詳細モーダル"""
@@ -1016,189 +848,183 @@ def show_task_modal():
         st.error("タスクが見つかりません")
         return
     
-    # モーダルオーバーレイ
-    st.markdown("""
-    <div class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-    """, unsafe_allow_html=True)
-    
-    # モーダルヘッダー
-    col1, col2 = st.columns([5, 1])
-    
-    with col1:
-        st.markdown(f"# {task['name']}")
-        if task.get('created_from_message'):
-            st.caption(f"🤖 AIが自動生成 | 📧 {task['source_message']['sender']} - {task['source_message']['subject']}")
-    
-    with col2:
-        if st.button("✖️", key="close_modal", help="モーダルを閉じる"):
-            st.session_state.show_task_modal = False
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # 基本情報
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("#### 📊 基本情報")
+    # モーダルの背景オーバーレイ
+    with st.container():
+        # モーダルヘッダー
+        col1, col2 = st.columns([5, 1])
         
-        # ステータス変更
-        current_status = task['status']
-        new_status = st.selectbox(
-            "ステータス",
-            ['To Do', '進行中', 'レビュー中', '完了'],
-            index=['To Do', '進行中', 'レビュー中', '完了'].index(current_status),
-            key=f"modal_status_{task['id']}"
+        with col1:
+            st.markdown(f"# {task['name']}")
+            if task.get('created_from_message'):
+                st.caption(f"🤖 AIが自動生成 | 📧 {task['source_message']['sender']} - {task['source_message']['subject']}")
+        
+        with col2:
+            if st.button("✖️ 閉じる", key="close_modal", help="モーダルを閉じる"):
+                st.session_state.show_task_modal = False
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # 基本情報
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### 📊 基本情報")
+            
+            # ステータス変更
+            current_status = task['status']
+            new_status = st.selectbox(
+                "ステータス",
+                ['To Do', '進行中', 'レビュー中', '完了'],
+                index=['To Do', '進行中', 'レビュー中', '完了'].index(current_status),
+                key=f"modal_status_{task['id']}"
+            )
+            
+            if new_status != current_status:
+                update_task_status(task['id'], new_status)
+                st.success(f"ステータスを「{new_status}」に変更しました")
+                st.rerun()
+            
+            # その他の基本情報
+            st.write(f"**優先度:** {task['priority']}")
+            st.write(f"**担当者:** {task.get('assignee', '')}")
+            st.write(f"**期限:** {task.get('due_date', '')}")
+        
+        with col2:
+            st.markdown("#### 📁 プロジェクト情報")
+            st.write(f"**プロジェクト:** {task.get('project', '')}")
+            st.write(f"**推定時間:** {task.get('estimated_time', '')}")
+            st.write(f"**作成日時:** {task.get('created_at', '')}")
+        
+        with col3:
+            st.markdown("#### 🏷️ タグ")
+            if task.get('tags'):
+                for tag in task['tags']:
+                    st.markdown(f"`{tag}`")
+        
+        # 説明
+        st.markdown("#### 📝 説明")
+        st.text_area(
+            "説明",
+            value=task.get('description', ''),
+            key=f"modal_desc_{task['id']}",
+            height=100,
+            label_visibility="collapsed"
         )
         
-        if new_status != current_status:
-            update_task_status(task['id'], new_status)
-            st.success(f"ステータスを「{new_status}」に変更しました")
-            st.rerun()
+        # サブタスク
+        st.markdown("#### ✅ サブタスク")
         
-        # その他の基本情報
-        st.write(f"**優先度:** {task['priority']}")
-        st.write(f"**担当者:** {task.get('assignee', '')}")
-        st.write(f"**期限:** {task.get('due_date', '')}")
-    
-    with col2:
-        st.markdown("#### 📁 プロジェクト情報")
-        st.write(f"**プロジェクト:** {task.get('project', '')}")
-        st.write(f"**推定時間:** {task.get('estimated_time', '')}")
-        st.write(f"**作成日時:** {task.get('created_at', '')}")
-    
-    with col3:
-        st.markdown("#### 🏷️ タグ")
-        if task.get('tags'):
-            for tag in task['tags']:
-                st.markdown(f"`{tag}`")
-    
-    # 説明
-    st.markdown("#### 📝 説明")
-    st.text_area(
-        "説明",
-        value=task.get('description', ''),
-        key=f"modal_desc_{task['id']}",
-        height=100,
-        label_visibility="collapsed"
-    )
-    
-    # サブタスク
-    st.markdown("#### ✅ サブタスク")
-    
-    if task.get('subtasks'):
-        for i, subtask in enumerate(task['subtasks']):
-            col1, col2 = st.columns([5, 1])
-            
-            with col1:
-                # チェックボックスでサブタスクの完了状態を管理
-                completed = st.checkbox(
-                    subtask['name'], 
-                    value=subtask['completed'],
-                    key=f"modal_subtask_{task['id']}_{subtask['id']}"
-                )
+        if task.get('subtasks'):
+            for i, subtask in enumerate(task['subtasks']):
+                col1, col2 = st.columns([5, 1])
                 
-                # 状態が変更された場合
-                if completed != subtask['completed']:
-                    subtask['completed'] = completed
-                    if completed:
-                        st.success(f"サブタスク「{subtask['name']}」を完了しました！")
-                    else:
-                        st.info(f"サブタスク「{subtask['name']}」を未完了に戻しました")
+                with col1:
+                    # チェックボックスでサブタスクの完了状態を管理
+                    completed = st.checkbox(
+                        subtask['name'], 
+                        value=subtask['completed'],
+                        key=f"modal_subtask_{task['id']}_{subtask['id']}"
+                    )
+                    
+                    # 状態が変更された場合
+                    if completed != subtask['completed']:
+                        subtask['completed'] = completed
+                        if completed:
+                            st.success(f"サブタスク「{subtask['name']}」を完了しました！")
+                        else:
+                            st.info(f"サブタスク「{subtask['name']}」を未完了に戻しました")
+                        st.rerun()
+                
+                with col2:
+                    st.write("✅" if subtask['completed'] else "⭕")
+        
+        # サブタスク追加
+        with st.expander("➕ サブタスクを追加"):
+            new_subtask_name = st.text_input("サブタスク名", key=f"modal_new_subtask_{task['id']}")
+            if st.button("追加", key=f"modal_add_subtask_{task['id']}"):
+                if new_subtask_name:
+                    if 'subtasks' not in task:
+                        task['subtasks'] = []
+                    
+                    new_subtask = {
+                        'id': len(task['subtasks']) + 1,
+                        'name': new_subtask_name,
+                        'completed': False
+                    }
+                    task['subtasks'].append(new_subtask)
+                    st.success(f"サブタスク「{new_subtask_name}」を追加しました！")
                     st.rerun()
-            
-            with col2:
-                st.write("✅" if subtask['completed'] else "⭕")
-    
-    # サブタスク追加
-    with st.expander("➕ サブタスクを追加"):
-        new_subtask_name = st.text_input("サブタスク名", key=f"modal_new_subtask_{task['id']}")
-        if st.button("追加", key=f"modal_add_subtask_{task['id']}"):
-            if new_subtask_name:
-                if 'subtasks' not in task:
-                    task['subtasks'] = []
+        
+        # コメント
+        st.markdown("#### 💬 コメント")
+        
+        # 既存コメント
+        if task.get('comments'):
+            for comment in task['comments']:
+                st.markdown(f"""
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                    <strong>{comment['author']}</strong> <small>{comment['timestamp']}</small><br>
+                    {comment['text']}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # 新しいコメント
+        new_comment = st.text_area("新しいコメント", key=f"modal_new_comment_{task['id']}")
+        if st.button("コメント追加", key=f"modal_add_comment_{task['id']}"):
+            if new_comment:
+                if 'comments' not in task:
+                    task['comments'] = []
                 
-                new_subtask = {
-                    'id': len(task['subtasks']) + 1,
-                    'name': new_subtask_name,
-                    'completed': False
+                comment = {
+                    'author': '自分',
+                    'text': new_comment,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M')
                 }
-                task['subtasks'].append(new_subtask)
-                st.success(f"サブタスク「{new_subtask_name}」を追加しました！")
+                task['comments'].append(comment)
+                st.success("コメントを追加しました！")
                 st.rerun()
-    
-    # コメント
-    st.markdown("#### 💬 コメント")
-    
-    # 既存コメント
-    if task.get('comments'):
-        for comment in task['comments']:
-            st.markdown(f"""
-            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
-                <strong>{comment['author']}</strong> <small>{comment['timestamp']}</small><br>
-                {comment['text']}
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # 新しいコメント
-    new_comment = st.text_area("新しいコメント", key=f"modal_new_comment_{task['id']}")
-    if st.button("コメント追加", key=f"modal_add_comment_{task['id']}"):
-        if new_comment:
-            if 'comments' not in task:
-                task['comments'] = []
-            
-            comment = {
-                'author': '自分',
-                'text': new_comment,
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M')
-            }
-            task['comments'].append(comment)
-            st.success("コメントを追加しました！")
-            st.rerun()
-    
-    # 完了条件
-    if task.get('completion_criteria'):
-        st.markdown("#### 🎯 完了条件")
-        st.info(task['completion_criteria'])
-    
-    # アクションボタン
-    st.markdown("---")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if task['status'] != '完了':
-            if st.button("✅ 完了にする", type="primary", key=f"modal_complete_{task['id']}"):
-                update_task_status(task['id'], '完了')
-                st.success("タスクを完了にしました！")
-                st.balloons()
+        
+        # 完了条件
+        if task.get('completion_criteria'):
+            st.markdown("#### 🎯 完了条件")
+            st.info(task['completion_criteria'])
+        
+        # アクションボタン
+        st.markdown("---")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if task['status'] != '完了':
+                if st.button("✅ 完了にする", type="primary", key=f"modal_complete_{task['id']}"):
+                    update_task_status(task['id'], '完了')
+                    st.success("タスクを完了にしました！")
+                    st.balloons()
+                    st.rerun()
+        
+        with col2:
+            if st.button("📋 複製", key=f"modal_duplicate_{task['id']}"):
+                # タスクの複製
+                new_task = task.copy()
+                new_task['id'] = st.session_state.task_counter
+                new_task['name'] = f"{task['name']} (コピー)"
+                new_task['status'] = 'To Do'
+                new_task['created_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+                
+                st.session_state.ai_tasks.append(new_task)
+                st.session_state.task_counter += 1
+                st.success("タスクを複製しました！")
+        
+        with col3:
+            if st.button("🗑️ 削除", key=f"modal_delete_{task['id']}"):
+                st.session_state.ai_tasks = [t for t in st.session_state.ai_tasks if t['id'] != task['id']]
+                st.session_state.show_task_modal = False
+                st.success("タスクを削除しました")
                 st.rerun()
-    
-    with col2:
-        if st.button("📋 複製", key=f"modal_duplicate_{task['id']}"):
-            # タスクの複製
-            new_task = task.copy()
-            new_task['id'] = st.session_state.task_counter
-            new_task['name'] = f"{task['name']} (コピー)"
-            new_task['status'] = 'To Do'
-            new_task['created_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
-            
-            st.session_state.ai_tasks.append(new_task)
-            st.session_state.task_counter += 1
-            st.success("タスクを複製しました！")
-    
-    with col3:
-        if st.button("🗑️ 削除", key=f"modal_delete_{task['id']}"):
-            st.session_state.ai_tasks = [t for t in st.session_state.ai_tasks if t['id'] != task['id']]
-            st.session_state.show_task_modal = False
-            st.success("タスクを削除しました")
-            st.rerun()
-    
-    with col4:
-        if st.button("📤 共有", key=f"modal_share_{task['id']}"):
-            st.info("共有機能は開発中です")
-    
-    st.markdown('</div></div>', unsafe_allow_html=True)
+        
+        with col4:
+            if st.button("📤 共有", key=f"modal_share_{task['id']}"):
+                st.info("共有機能は開発中です")
 
 def show_communication():
     """AI機能付きコミュニケーション表示"""
@@ -1251,7 +1077,7 @@ def show_communication():
         }
     ]
     
-    # メッセージ一覧表示（簡略版 - タスク管理に集中するため）
+    # メッセージ一覧表示
     for msg in messages:
         with st.container():
             col1, col2 = st.columns([3, 1])
@@ -1282,21 +1108,22 @@ def show_communication():
             st.markdown("---")
 
 def show_tasks():
-    """超リアルAsana風タスク管理表示"""
-    st.title("📋 超リアルAsana風タスク管理")
+    """修正版Asana風タスク管理表示"""
+    st.title("📋 修正版Asana風タスク管理")
     
     initialize_session_state()
     
-    # タスクモーダルの表示
+    # タスクモーダルの表示（別のコンテナで）
     if st.session_state.show_task_modal:
-        show_task_modal()
+        with st.container():
+            show_task_modal()
     
     # ビュー切り替え
-    view_tabs = st.tabs(["📋 カンバンボード", "📊 リストビュー", "📈 プロジェクトビュー"])
+    view_tabs = st.tabs(["📋 カンバンボード", "📊 リストビュー"])
     
     with view_tabs[0]:
-        # カンバンボード表示
-        show_ultra_asana_kanban()
+        # 修正版カンバンボード表示
+        show_fixed_kanban_board()
     
     with view_tabs[1]:
         st.markdown("### 📊 タスクリスト")
@@ -1344,46 +1171,6 @@ def show_tasks():
                 st.markdown("---")
         else:
             st.info("タスクがありません")
-    
-    with view_tabs[2]:
-        st.markdown("### 📈 プロジェクトビュー")
-        
-        for project in st.session_state.projects:
-            with st.expander(f"📁 {project['name']}", expanded=True):
-                # プロジェクト情報
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.write(f"**説明:** {project['description']}")
-                    st.progress(project['progress'] / 100, text=f"進捗: {project['progress']}%")
-                
-                with col2:
-                    st.write(f"**ステータス:** {project['status']}")
-                
-                # プロジェクト関連タスク
-                project_tasks = [t for t in st.session_state.ai_tasks if t.get('project') == project['name']]
-                
-                if project_tasks:
-                    st.markdown("#### 関連タスク")
-                    
-                    for task in project_tasks:
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        
-                        with col1:
-                            st.write(f"• **{task['name']}**")
-                        
-                        with col2:
-                            priority_colors = {"高": "🔴", "中": "🟡", "低": "🟢"}
-                            st.write(f"{priority_colors.get(task['priority'], '📊')} {task['priority']}")
-                        
-                        with col3:
-                            status_colors = {
-                                "To Do": "⭕", "進行中": "🔄",
-                                "レビュー中": "👀", "完了": "✅"
-                            }
-                            st.write(f"{status_colors.get(task['status'], '📋')} {task['status']}")
-                else:
-                    st.info("関連タスクがありません")
 
 def show_projects():
     """プロジェクト管理表示"""
@@ -1440,8 +1227,8 @@ def main():
     # AI状態表示
     ai_available = setup_ai()
     if ai_available:
-        st.sidebar.success("🤖 AI: 超Asana統合")
-        st.sidebar.write("📋 カンバン・詳細・分析・返信")
+        st.sidebar.success("🤖 AI: 修正版統合")
+        st.sidebar.write("📋 修正・カンバン・詳細・分析")
     else:
         st.sidebar.warning("🤖 AI: テストモード")
     
@@ -1455,8 +1242,8 @@ def main():
     
     st.sidebar.markdown("---")
     
-    # 超Asana風統計表示
-    st.sidebar.markdown("### 📋 超Asana統計")
+    # 修正版統計表示
+    st.sidebar.markdown("### 📋 修正版統計")
     
     todo_count = len([t for t in st.session_state.ai_tasks if t['status'] == 'To Do'])
     progress_count = len([t for t in st.session_state.ai_tasks if t['status'] == '進行中'])
@@ -1472,9 +1259,9 @@ def main():
     total_tasks = len(st.session_state.ai_tasks)
     completion_rate = completed_count / total_tasks if total_tasks > 0 else 0
     
-    st.sidebar.markdown("### 📈 超Asana効率")
+    st.sidebar.markdown("### 📈 修正版効率")
     st.sidebar.progress(completion_rate, text=f"完了率: {int(completion_rate * 100)}%")
-    st.sidebar.write("🎯 体験向上: 98%")
+    st.sidebar.write("🎯 修正完了: 100%")
     
     st.sidebar.markdown("---")
     
