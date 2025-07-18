@@ -1,0 +1,27 @@
+[global]
+# Streamlit設定ファイル
+
+# アプリの外観設定
+showWarningOnDirectExecution = false
+showErrorDetails = true
+
+[server]
+# サーバー設定
+headless = true
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+# ブラウザ設定
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8501
+
+[theme]
+# テーマ設定（スマホでも見やすく）
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"

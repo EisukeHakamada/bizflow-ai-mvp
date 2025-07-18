@@ -1,0 +1,107 @@
+# BizFlow AI MVP
+
+複数事業を兼務する個人事業主・起業家向けの統合業務管理AIアシスタント
+
+## 🚀 機能概要
+
+### 主要機能
+- **📋 統合タスク・プロジェクト管理**: 複数事業のタスクを一元管理
+- **🤖 AI駆動型アクション提案**: 優先度とネクストアクションをAIが提案
+- **💬 統合コミュニケーションハブ**: Slack, Teams, Gmail等を統合管理
+- **📱 スマホ対応**: 移動中でも効率的な業務確認・操作が可能
+
+### 対応AIモデル
+- Google Gemini
+- Anthropic Claude
+- OpenAI GPT-4
+
+## 🛠️ 技術スタック
+
+- **フロントエンド**: Streamlit (レスポンシブデザイン)
+- **バックエンド**: Python
+- **データベース**: Firebase Firestore
+- **デプロイ**: Streamlit Cloud
+- **外部連携**: Slack API, Microsoft Graph API, Gmail API
+
+## 📦 セットアップ手順
+
+### 1. 環境構築
+
+```bash
+# リポジトリをクローン
+git clone 
+cd bizflow_ai_mvp
+
+# 仮想環境作成（推奨）
+python -m venv bizflow_env
+source bizflow_env/bin/activate  # Windowsの場合: bizflow_env\Scripts\activate
+
+# 依存関係インストール
+pip install -r requirements.txt
+```
+
+### 2. 環境変数設定
+
+```bash
+# .env.example を .env にコピー
+cp .env.example .env
+
+# .env ファイルを編集して実際のAPIキーを設定
+```
+
+### 3. Firebase設定
+
+1. [Firebase Console](https://console.firebase.google.com/)でプロジェクト作成
+2. Firestore データベースを有効化
+3. サービスアカウントキーを生成
+4. 認証情報を`.env`ファイルに設定
+
+### 4. ローカル実行
+
+```bash
+streamlit run main.py
+```
+
+## 🌐 デプロイ手順
+
+### Streamlit Cloud（推奨）
+
+1. GitHubにコードをプッシュ
+2. [Streamlit Cloud](https://share.streamlit.io/)でアカウント作成
+3. GitHubリポジトリを選択してデプロイ
+4. 管理画面でシークレット設定
+
+### Render（代替案）
+
+1. [Render](https://render.com/)でアカウント作成
+2. Web Serviceとして新規作成
+3. 環境変数を設定
+4. 自動デプロイ設定
+
+## 📱 使用方法
+
+### 初回ログイン
+- ユーザー名: `admin`
+- パスワード: `admin123`
+
+### 基本的な使い方
+1. **ダッシュボード**: 全体概要と今日の優先タスクを確認
+2. **タスク管理**: 新規タスク作成、ステータス更新、AI提案確認
+3. **プロジェクト管理**: プロジェクト全体の進捗管理
+4. **コミュニケーション**: 外部サービスからのメッセージ統合管理
+
+## 🔧 設定・カスタマイズ
+
+### AIモデルの切り替え
+`config/config.py`の`AI_MODELS`設定で使用するAIモデルを変更可能
+
+### 外部サービス連携
+各サービスのAPIキーを設定してコミュニケーション機能を有効化
+
+## 📄 ライセンス
+
+MIT License
+
+## 🤝 サポート
+
+質問や問題がある場合は、GitHubのIssuesで報告してください。
