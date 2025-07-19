@@ -1,0 +1,152 @@
+{
+    "short_name": "BizFlow カンバン",
+    "name": "BizFlow カンバンボード - 統合業務管理",
+    "description": "複数事業を兼務する個人事業主・起業家向けの統合業務管理AIアシスタントのカンバンボードモジュール",
+    "icons": [
+      {
+        "src": "favicon.ico",
+        "sizes": "64x64 32x32 24x24 16x16",
+        "type": "image/x-icon"
+      },
+      {
+        "src": "logo192.png",
+        "type": "image/png",
+        "sizes": "192x192",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "logo512.png",
+        "type": "image/png",
+        "sizes": "512x512",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "logo-rounded-192.png",
+        "type": "image/png",
+        "sizes": "192x192",
+        "purpose": "maskable"
+      },
+      {
+        "src": "logo-rounded-512.png",
+        "type": "image/png",
+        "sizes": "512x512",
+        "purpose": "maskable"
+      }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "theme_color": "#667eea",
+    "background_color": "#ffffff",
+    "scope": "/",
+    "lang": "ja",
+    "dir": "ltr",
+    "categories": [
+      "productivity",
+      "business",
+      "utilities"
+    ],
+    "screenshots": [
+      {
+        "src": "screenshot-wide-1.png",
+        "sizes": "1280x720",
+        "type": "image/png",
+        "form_factor": "wide",
+        "label": "カンバンボードのメイン画面"
+      },
+      {
+        "src": "screenshot-narrow-1.png",
+        "sizes": "640x1136",
+        "type": "image/png",
+        "form_factor": "narrow",
+        "label": "モバイル表示のカンバンボード"
+      }
+    ],
+    "shortcuts": [
+      {
+        "name": "新しいタスクを作成",
+        "short_name": "新規タスク",
+        "description": "新しいタスクを素早く作成",
+        "url": "/?action=new-task",
+        "icons": [
+          {
+            "src": "icon-new-task.png",
+            "sizes": "96x96",
+            "type": "image/png"
+          }
+        ]
+      },
+      {
+        "name": "プロジェクト一覧",
+        "short_name": "プロジェクト",
+        "description": "プロジェクト一覧を表示",
+        "url": "/?view=projects",
+        "icons": [
+          {
+            "src": "icon-projects.png",
+            "sizes": "96x96",
+            "type": "image/png"
+          }
+        ]
+      },
+      {
+        "name": "統計・分析",
+        "short_name": "分析",
+        "description": "プロジェクトの統計と分析を表示",
+        "url": "/?view=analytics",
+        "icons": [
+          {
+            "src": "icon-analytics.png",
+            "sizes": "96x96",
+            "type": "image/png"
+          }
+        ]
+      }
+    ],
+    "prefer_related_applications": false,
+    "iarc_rating_id": "",
+    "edge_side_panel": {
+      "preferred_width": 400
+    },
+    "protocol_handlers": [
+      {
+        "protocol": "web+kanban",
+        "url": "/?task=%s"
+      }
+    ],
+    "file_handlers": [
+      {
+        "action": "/?import",
+        "accept": {
+          "application/json": [".json"],
+          "text/csv": [".csv"]
+        }
+      }
+    ],
+    "share_target": {
+      "action": "/?share",
+      "method": "POST",
+      "enctype": "multipart/form-data",
+      "params": {
+        "title": "title",
+        "text": "text",
+        "url": "url",
+        "files": [
+          {
+            "name": "files",
+            "accept": ["image/*", "text/*", "application/pdf"]
+          }
+        ]
+      }
+    },
+    "launch_handler": {
+      "client_mode": "focus-existing"
+    },
+    "display_override": [
+      "window-controls-overlay",
+      "standalone",
+      "minimal-ui",
+      "browser"
+    ],
+    "handle_links": "preferred"
+  }
