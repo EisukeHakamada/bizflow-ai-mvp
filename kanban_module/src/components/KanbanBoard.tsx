@@ -12,15 +12,16 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
+  horizontalListSortingStrategy,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Column } from './Column';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { NotificationSystem } from './NotificationSystem';
-import { Task, ColumnType, ProjectStats } from '../types';
+import { Task, ColumnType, ProjectStats, TaskStatus } from '../types';
 import { taskOperations, columnOperations, projectOperations } from '../firebase/config';
-import { Plus, Settings, BarChart3, Filter, Search, Download } from 'lucide-react';
+import { Plus, Settings, BarChart3, Filter, Search, Download, Grid3X3, List } from 'lucide-react';
 
 interface KanbanBoardProps {
   projectId?: string;
@@ -45,6 +46,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [currentColumnId, setCurrentColumnId] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
 
   // ドラッグ&ドロップセンサー
   const sensors = useSensors(
@@ -199,6 +202,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // タスク操作
   const handleAddTask = (columnId: string) => {
+    setCurrentColumnId(columnId);
     setEditingTask(null);
     setIsTaskModalOpen(true);
   };
@@ -210,27 +214,33 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const dataToSave = {
+        ...taskData,
+        columnId: currentColumnId || taskData.columnId,
+      };
+
       if (editingTask) {
-        await taskOperations.updateTask(editingTask.id, taskData);
+        await taskOperations.updateTask(editingTask.id, dataToSave);
         addNotification({
           type: 'success',
           title: 'タスクを更新しました',
-          message: `「${taskData.title}」を更新しました`,
+          message: `「${dataToSave.title}」を更新しました`,
         });
       } else {
         const taskId = await taskOperations.addTask({
-          ...taskData,
+          ...dataToSave,
           projectId: projectId === 'default' ? undefined : projectId,
         });
         addNotification({
           type: 'success',
           title: 'タスクを作成しました',
-          message: `「${taskData.title}」を作成しました`,
+          message: `「${dataToSave.title}」を作成しました`,
         });
       }
       
       setIsTaskModalOpen(false);
       setEditingTask(null);
+      setCurrentColumnId('');
     } catch (err) {
       console.error('タスクの保存に失敗しました:', err);
       addNotification({
@@ -329,10 +339,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   if (isLoading) {
     return (
-      <div className="kanban-container p-6">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">カンバンボードを読み込み中...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">カンバンボードを読み込み中...</p>
         </div>
       </div>
     );
@@ -340,12 +350,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   if (error) {
     return (
-      <div className="kanban-container p-6">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow-lg p-8 max-w-md">
+          <div className="text-red-600 text-xl mb-4">⚠️ エラーが発生しました</div>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={loadKanbanData}
-            className="btn btn-primary"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             再試行
           </button>
@@ -355,157 +366,199 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }
 
   return (
-    <div className={`kanban-container ${isMobileView ? 'mobile-view' : ''}`}>
-      <div className="max-w-7xl mx-auto p-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-full mx-auto">
         {/* ヘッダー */}
-        <div className="mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                🚀 BizFlow カンバンボード
-              </h1>
-              <p className="text-gray-600">
-                プロジェクト: {projectId === 'default' ? '全体' : projectId}
-                {isOffline && <span className="text-yellow-600 ml-2">(オフライン)</span>}
-              </p>
+        <div className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span className="text-3xl">🚀</span>
+                    BizFlow カンバンボード
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    プロジェクト: <span className="font-medium">{projectId === 'default' ? '全体' : projectId}</span>
+                    {isOffline && <span className="text-yellow-600 ml-2 font-medium">(オフライン)</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* ツールバー */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* ビューモード切り替え */}
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('board')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'board'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Grid3X3 size={16} className="inline mr-1" />
+                    ボード
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'list'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <List size={16} className="inline mr-1" />
+                    リスト
+                  </button>
+                </div>
+
+                <div className="h-6 border-l border-gray-300 mx-1"></div>
+
+                <button
+                  onClick={handleAddColumn}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-sm"
+                  disabled={isOffline}
+                >
+                  <Plus size={16} />
+                  カラム追加
+                </button>
+                
+                <button
+                  onClick={handleExportData}
+                  className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                >
+                  <Download size={16} />
+                  エクスポート
+                </button>
+                
+                <button className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+                  <BarChart3 size={16} />
+                  分析
+                </button>
+                
+                <button className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors">
+                  <Settings size={16} />
+                  設定
+                </button>
+              </div>
             </div>
 
-            {/* ツールバー */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleAddColumn}
-                className="btn btn-primary"
-                disabled={isOffline}
-              >
-                <Plus size={20} />
-                <span className="hidden sm:inline ml-2">カラム追加</span>
-              </button>
-              <button
-                onClick={handleExportData}
-                className="btn btn-secondary"
-              >
-                <Download size={20} />
-                <span className="hidden sm:inline ml-2">エクスポート</span>
-              </button>
-              <button className="btn btn-secondary">
-                <BarChart3 size={20} />
-                <span className="hidden sm:inline ml-2">分析</span>
-              </button>
-              <button className="btn btn-secondary">
-                <Settings size={20} />
-                <span className="hidden sm:inline ml-2">設定</span>
-              </button>
+            {/* 検索・フィルター */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="タスクを検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="all">全ての優先度</option>
+                  <option value="high">高</option>
+                  <option value="medium">中</option>
+                  <option value="low">低</option>
+                </select>
+              </div>
             </div>
           </div>
-
-          {/* フィルターと検索 */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="タスクを検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-input pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className="form-input"
-              >
-                <option value="all">全ての優先度</option>
-                <option value="high">高</option>
-                <option value="medium">中</option>
-                <option value="low">低</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 統計情報 */}
-          {projectStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="card p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600 mb-1">
-                  {projectStats.totalTasks}
-                </div>
-                <div className="text-sm text-gray-600">総タスク数</div>
-              </div>
-              <div className="card p-4 text-center">
-                <div className="text-2xl font-bold text-green-600 mb-1">
-                  {projectStats.completionRate.toFixed(1)}%
-                </div>
-                <div className="text-sm text-gray-600">完了率</div>
-              </div>
-              <div className="card p-4 text-center">
-                <div className="text-2xl font-bold text-orange-600 mb-1">
-                  {projectStats.inProgressTasks}
-                </div>
-                <div className="text-sm text-gray-600">進行中</div>
-              </div>
-              <div className="card p-4 text-center">
-                <div className="text-2xl font-bold text-purple-600 mb-1">
-                  {projectStats.todoTasks}
-                </div>
-                <div className="text-sm text-gray-600">待機中</div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* カンバンボード */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className={`grid gap-6 ${
-            isMobileView 
-              ? 'grid-cols-1' 
-              : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-          }`}>
-            {columns
-              .sort((a, b) => a.order - b.order)
-              .map(column => {
-                const columnTasks = filteredTasks.filter(task => task.columnId === column.id);
-                
-                return (
-                  <SortableContext
-                    key={column.id}
-                    items={column.taskIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <Column
-                      column={column}
-                      tasks={columnTasks}
-                      onAddTask={() => handleAddTask(column.id)}
-                      onEditTask={handleEditTask}
-                      onDeleteTask={handleDeleteTask}
-                      isOffline={isOffline}
-                    />
-                  </SortableContext>
-                );
-              })}
+        {/* 統計情報 */}
+        {projectStats && (
+          <div className="bg-white border-b border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 text-center border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {projectStats.totalTasks}
+                  </div>
+                  <div className="text-sm text-blue-700 font-medium">総タスク数</div>
+                </div>
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 text-center border border-green-200">
+                  <div className="text-2xl font-bold text-green-600 mb-1">
+                    {projectStats.completionRate.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-green-700 font-medium">完了率</div>
+                </div>
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4 text-center border border-orange-200">
+                  <div className="text-2xl font-bold text-orange-600 mb-1">
+                    {projectStats.inProgressTasks}
+                  </div>
+                  <div className="text-sm text-orange-700 font-medium">進行中</div>
+                </div>
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 text-center border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">
+                    {projectStats.todoTasks}
+                  </div>
+                  <div className="text-sm text-purple-700 font-medium">待機中</div>
+                </div>
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* ドラッグオーバーレイ */}
-          <DragOverlay>
-            {activeTask ? (
-              <TaskCard
-                task={activeTask}
-                onEdit={() => {}}
-                onDelete={() => {}}
-                isDragging
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        {/* カンバンボード */}
+        <div className="p-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            {/* 横並びレイアウト（重要！） */}
+            <div style={{display: "flex", gap: "24px", overflowX: "auto", paddingBottom: "16px", minHeight: "calc(100vh - 300px)", width: "100%"}}>
+              {columns
+                .sort((a, b) => a.order - b.order)
+                .map(column => {
+                  const columnTasks = filteredTasks.filter(task => task.columnId === column.id);
+                  
+                  return (
+                    <div key={column.id} style={{flexShrink: 0, width: "320px", minWidth: "320px"}}>
+                      <SortableContext
+                        items={columnTasks.map(task => task.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <Column
+                          column={column}
+                          tasks={columnTasks}
+                          onAddTask={() => handleAddTask(column.id)}
+                          onEditTask={handleEditTask}
+                          onDeleteTask={handleDeleteTask}
+                          isOffline={isOffline}
+                        />
+                      </SortableContext>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* ドラッグオーバーレイ */}
+            <DragOverlay>
+              {activeTask ? (
+                <div className="transform rotate-3 scale-105">
+                  <TaskCard
+                    task={activeTask}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    isDragging
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
 
         {/* タスク作成・編集モーダル */}
         <TaskModal
@@ -513,6 +566,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
           onClose={() => {
             setIsTaskModalOpen(false);
             setEditingTask(null);
+            setCurrentColumnId('');
           }}
           onSave={handleSaveTask}
           task={editingTask}
